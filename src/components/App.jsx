@@ -1,69 +1,75 @@
-import { Component } from "react";
+import { useEffect, useState } from "react";
 import { SearchBar, ImageGallery, ImageGalleryItem, Button, Loader, Modal } from "components";
 import { AppStyled } from './App.styled';
 import fetchImages from "api/Api";
 
-class App extends Component {
+const App = () => {
+  const [photos, setPhotos] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalHits, setTotalHits] = useState(0);
+  const [picsShown, setPicsShown] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState('');
+  const [showLoadMoreBtn, setShowLoadMoreBtn] = useState(false);
 
-  state = {
-    photos: [],
-    searchQuery: "",
-    page: 1,
-    totalHits: 0,
-    picsShown: 0,
-    isLoading: false,
-    showModal: false,
-    selectedImage: "",
-  };
-
-  async componentDidUpdate(prevProps, prevState) {
-    if(prevState.searchQuery !== this.state.searchQuery || prevState.page !== this.state.page) {
-      this.loadPics();
+  useEffect(() => {
+    if (!searchQuery) {
+      return;
     }
-  }
+    loadPics();
+    // eslint-disable-next-line
+  }, [searchQuery, page]);
 
-  loadPics = async () => {
-    this.setState({ isLoading: true, });
-    const { searchQuery, page } = this.state;
+  useEffect(() => {
+    setShowLoadMoreBtn(picsShown < totalHits);
+  }, [picsShown, totalHits])
+
+  async function loadPics() {
+    setIsLoading(true);
     const response = await fetchImages(searchQuery, page);
     const newPicturesArray = response.hits.map(({ id, webformatURL, largeImageURL }) => ({ id, webformatURL, largeImageURL, }));
-    this.setState((prevState) => ({ photos: [...prevState.photos, ...newPicturesArray], isLoading: false, picsShown: prevState.picsShown + response.hits.length, totalHits: response.totalHits, }));
+    setPhotos([...photos, ...newPicturesArray]);
+    setIsLoading(false);
+    setPicsShown((prevCount) => prevCount + response.hits.length);
+    setTotalHits(response.totalHits);
   }
 
-  handleSubmit = (event) => {
+  const handleSubmit = (event) => {
     event.preventDefault();
-    this.setState({ searchQuery: encodeURI(event.currentTarget.searchQuery.value), page: 1, photos: [], picsShown: 0, totalHits: 0 });
+    setSearchQuery(encodeURI(event.currentTarget.searchQuery.value));
+    setPage(1);
+    setPhotos([]);
+    setPicsShown(0);
+    setTotalHits(0);
+    setShowLoadMoreBtn(false);
   }
 
-  handleLoadMoreBtnClick = () => {
-    this.setState(prevState => ({ page: prevState.page + 1, }));
+  const handleLoadMoreBtnClick = () => {
+    setPage(page + 1);
   }
 
-  handlePictureClick = (largeImageURL) => {
-    this.toggleModal();
-    this.setState({ selectedImage: largeImageURL });
+  const handlePictureClick = (largeImageURL) => {
+    toggleModal();
+    setSelectedImage(largeImageURL);
   }
 
-  toggleModal = () => {
-    this.setState(({ showModal }) => ({ showModal: !showModal, }));
+  const toggleModal = () => {
+    setShowModal(!showModal);
   }
 
-  render() {
-    const { photos, searchQuery, isLoading, showModal, picsShown, totalHits, selectedImage } = this.state;
-    const showLoadMoreBtn = picsShown < totalHits && !isLoading;
-
-    return (
-      <AppStyled>
-        <SearchBar onSubmit={this.handleSubmit} />
-        <ImageGallery >
-          <ImageGalleryItem pics={photos} alt={searchQuery} onImageClicked={this.handlePictureClick} />
-        </ImageGallery>
-        {isLoading && <Loader />}
-        {showLoadMoreBtn && <Button label="Load more" onClick={this.handleLoadMoreBtnClick} />}
-        {showModal && <Modal onClose={this.toggleModal} largeImg={selectedImage} />}
-      </AppStyled>
-    );
-  }
+  return (
+    <AppStyled>
+      <SearchBar onSubmit={handleSubmit} />
+      <ImageGallery >
+        <ImageGalleryItem pics={photos} alt={searchQuery} onImageClicked={handlePictureClick} />
+      </ImageGallery>
+      {isLoading && <Loader />}
+      {showLoadMoreBtn && <Button label="Load more" onClick={handleLoadMoreBtnClick} />}
+      {showModal && <Modal onClose={toggleModal} largeImg={selectedImage} />}
+    </AppStyled>
+  );
 }
 
 export default App;
