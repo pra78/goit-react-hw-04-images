@@ -18,23 +18,21 @@ const App = () => {
     if (!searchQuery) {
       return;
     }
+    async function loadPics() {
+      setIsLoading(true);
+      const response = await fetchImages(searchQuery, page);
+      const newPicturesArray = response.hits.map(({ id, webformatURL, largeImageURL }) => ({ id, webformatURL, largeImageURL, }));
+      setPhotos((prevPhotos) => [...prevPhotos, ...newPicturesArray]);
+      setIsLoading(false);
+      setPicsShown((prevCount) => prevCount + response.hits.length);
+      setTotalHits(response.totalHits);
+    }
     loadPics();
-    // eslint-disable-next-line
   }, [searchQuery, page]);
 
   useEffect(() => {
     setShowLoadMoreBtn(picsShown < totalHits);
   }, [picsShown, totalHits])
-
-  async function loadPics() {
-    setIsLoading(true);
-    const response = await fetchImages(searchQuery, page);
-    const newPicturesArray = response.hits.map(({ id, webformatURL, largeImageURL }) => ({ id, webformatURL, largeImageURL, }));
-    setPhotos([...photos, ...newPicturesArray]);
-    setIsLoading(false);
-    setPicsShown((prevCount) => prevCount + response.hits.length);
-    setTotalHits(response.totalHits);
-  }
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -47,7 +45,7 @@ const App = () => {
   }
 
   const handleLoadMoreBtnClick = () => {
-    setPage(page + 1);
+    setPage((prevPage) => prevPage + 1);
   }
 
   const handlePictureClick = (largeImageURL) => {
